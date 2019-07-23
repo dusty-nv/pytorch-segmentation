@@ -1,6 +1,18 @@
+#
+# Note -- this training script is tweaked from the original version at:
+#
+#           https://github.com/pytorch/vision/tree/v0.3.0/references/segmentation
+#
+# It's also meant to be used against this fork of torchvision, which includes 
+# some patches for exporting to ONNX and adds fcn_resnet18 and fcn_resnet34:
+#
+#           https://github.com/dusty-nv/vision/tree/v0.3.0
+#
+import argparse
 import datetime
-import os
 import time
+import math
+import os
 import shutil
 
 import torch
@@ -9,18 +21,67 @@ from torch import nn
 import torchvision
 
 from coco_utils import get_coco
+
 import transforms as T
 import utils
 
-img_resolution = 480
+model_names = sorted(name for name in torchvision.models.segmentation.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(torchvision.models.segmentation.__dict__[name]))
 
-def get_dataset(name, image_set, transform):
+#
+# parse command-line arguments
+#
+def parse_args():
+    parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
+
+    parser.add_argument('data', metavar='DIR', help='path to dataset')
+    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco (default: voc)')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default='fcn_resnet18',
+                        choices=model_names,
+                        help='model architecture: ' +
+                        ' | '.join(model_names) +
+                        ' (default: fcn_resnet18)')
+    parser.add_argument('--aux-loss', action='store_true', help='train with auxilliary loss')
+    parser.add_argument('--resolution', default=320, type=int, metavar='N',
+                        help='NxN input image resolution of model (default: 320x320) '
+                         'when training on COCO dataset, consider 480x480')
+    parser.add_argument('--device', default='cuda', help='device')
+    parser.add_argument('-b', '--batch-size', default=4, type=int)
+    parser.add_argument('--epochs', default=30, type=int, metavar='N', help='number of total epochs to run')
+    parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
+                        help='number of data loading workers (default: 16)')
+    parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
+    parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+                        help='momentum')
+    parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
+                        metavar='W', help='weight decay (default: 1e-4)',
+                        dest='weight_decay')
+    parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
+    parser.add_argument('--model-dir', default='.', help='path where to save output models')
+    parser.add_argument('--resume', default='', help='resume from checkpoint')
+    parser.add_argument("--test-only", dest="test_only", help="Only test the model", action="store_true")
+    parser.add_argument("--pretrained", dest="pretrained", help="Use pre-trained models (only supported for fcn_resnet101)", action="store_true")
+
+    # distributed training parameters
+    parser.add_argument('--world-size', default=1, type=int,
+                        help='number of distributed processes')
+    parser.add_argument('--dist-url', default='env://', help='url used to set up distributed training')
+
+    args = parser.parse_args()
+    return args
+
+
+#
+# load desired dataset
+#
+def get_dataset(name, path, image_set, transform):
     def sbd(*args, **kwargs):
         return torchvision.datasets.SBDataset(*args, mode='segmentation', **kwargs)
     paths = {
-        "voc": ('/media/dusty/EXT4_464G/datasets/pascal-voc/', torchvision.datasets.VOCSegmentation, 21),
-        "voc_aug": ('/datasets01/SBDD/072318/', sbd, 21),
-        "coco": ('/media/dusty/EXT4_464G/datasets/coco/2017/', get_coco, 21)
+        "voc": (path, torchvision.datasets.VOCSegmentation, 21),
+        "voc_aug": (path, sbd, 21),
+        "coco": (path, get_coco, 21)
     }
     p, ds_fn, num_classes = paths[name]
 
@@ -28,9 +89,12 @@ def get_dataset(name, image_set, transform):
     return ds, num_classes
 
 
-def get_transform(train):
-    base_size = 520
-    crop_size = img_resolution
+#
+# create data transform
+#
+def get_transform(train, resolution):
+    base_size = resolution + 32 #520
+    crop_size = resolution #480
 
     min_size = int((0.5 if train else 1.0) * base_size)
     max_size = int((2.0 if train else 1.0) * base_size)
@@ -46,6 +110,9 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
+#
+# define the loss functions
+#
 def criterion(inputs, target):
     losses = {}
     for name, x in inputs.items():
@@ -57,6 +124,9 @@ def criterion(inputs, target):
     return losses['out'] + 0.5 * losses['aux']
 
 
+#
+# evaluate model IoU (intersection over union)
+#
 def evaluate(model, data_loader, device, num_classes):
     model.eval()
     confmat = utils.ConfusionMatrix(num_classes)
@@ -75,6 +145,9 @@ def evaluate(model, data_loader, device, num_classes):
     return confmat
 
 
+#
+# train for one epoch over the dataset
+#
 def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -94,9 +167,12 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
 
 
+#
+# main training function
+#
 def main(args):
-    if args.output_dir:
-        utils.mkdir(args.output_dir)
+    if args.model_dir:
+        utils.mkdir(args.model_dir)
 
     utils.init_distributed_mode(args)
     print(args)
@@ -104,8 +180,8 @@ def main(args):
     device = torch.device(args.device)
 
     # load the train and val datasets
-    dataset, num_classes = get_dataset(args.dataset, "train", get_transform(train=True))
-    dataset_test, _ = get_dataset(args.dataset, "val", get_transform(train=False))
+    dataset, num_classes = get_dataset(args.dataset, args.data, "train", get_transform(train=True, resolution=args.resolution))
+    dataset_test, _ = get_dataset(args.dataset, args.data, "val", get_transform(train=False, resolution=args.resolution))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
@@ -124,10 +200,14 @@ def main(args):
         sampler=test_sampler, num_workers=args.workers,
         collate_fn=utils.collate_fn)
 
+    print("=> training with dataset '{:s}'".format(args.dataset))
+    print("=> training with resolution {:d}x{:d}, {:d} classes".format(args.resolution, args.resolution, num_classes))
+    print("=> training with model:  {:s}".format(args.arch))
+
     # create the segmentation model
-    model = torchvision.models.segmentation.__dict__[args.model](num_classes=num_classes,
-                                                                 aux_loss=args.aux_loss,
-                                                                 pretrained=args.pretrained)
+    model = torchvision.models.segmentation.__dict__[args.arch](num_classes=num_classes,
+                                                                aux_loss=args.aux_loss,
+                                                                pretrained=args.pretrained)
     model.to(device)
 
     if args.distributed:
@@ -183,7 +263,7 @@ def main(args):
         print(confmat)
 
         # save model checkpoint
-        checkpoint_path = os.path.join(args.output_dir, 'model_{}.pth'.format(epoch))
+        checkpoint_path = os.path.join(args.model_dir, 'model_{}.pth'.format(epoch))
 
         utils.save_on_master(
             {
@@ -191,7 +271,7 @@ def main(args):
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
                 'args': args,
-                'arch': args.model,
+                'arch': args.arch,
                 'dataset': args.dataset,                
                 'num_classes': num_classes,
                 'resolution': img_resolution,
@@ -204,7 +284,7 @@ def main(args):
 
         if confmat.mean_IoU > best_IoU:
             best_IoU = confmat.mean_IoU
-            best_path = os.path.join(args.output_dir, 'model_best.pth')
+            best_path = os.path.join(args.model_dir, 'model_best.pth')
             shutil.copyfile(checkpoint_path, best_path)
             print('saved best model to:  {:s}  ({:.3f}% mean IoU, {:.3f}% accuracy)'.format(best_path, best_IoU, confmat.acc_global))
 
@@ -213,50 +293,7 @@ def main(args):
     print('Training time {}'.format(total_time_str))
 
 
-def parse_args():
-    import argparse
-    parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
-
-    parser.add_argument('--dataset', default='voc', help='dataset')
-    parser.add_argument('--model', default='fcn_resnet101', help='model')
-    parser.add_argument('--aux-loss', action='store_true', help='auxiliar loss')
-    parser.add_argument('--device', default='cuda', help='device')
-    parser.add_argument('-b', '--batch-size', default=8, type=int)
-    parser.add_argument('--epochs', default=30, type=int, metavar='N',
-                        help='number of total epochs to run')
-
-    parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
-                        help='number of data loading workers (default: 16)')
-    parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
-    parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                        help='momentum')
-    parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                        metavar='W', help='weight decay (default: 1e-4)',
-                        dest='weight_decay')
-    parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
-    parser.add_argument('--output-dir', default='.', help='path where to save')
-    parser.add_argument('--resume', default='', help='resume from checkpoint')
-    parser.add_argument(
-        "--test-only",
-        dest="test_only",
-        help="Only test the model",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--pretrained",
-        dest="pretrained",
-        help="Use pre-trained models from the modelzoo",
-        action="store_true",
-    )
-    # distributed training parameters
-    parser.add_argument('--world-size', default=1, type=int,
-                        help='number of distributed processes')
-    parser.add_argument('--dist-url', default='env://', help='url used to set up distributed training')
-
-    args = parser.parse_args()
-    return args
-
-
 if __name__ == "__main__":
     args = parse_args()
     main(args)
+
