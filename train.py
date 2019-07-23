@@ -274,7 +274,7 @@ def main(args):
                 'arch': args.arch,
                 'dataset': args.dataset,                
                 'num_classes': num_classes,
-                'resolution': img_resolution,
+                'resolution': args.resolution,
                 'accuracy': confmat.acc_global,
                 'mean_IoU': confmat.mean_IoU
             },
