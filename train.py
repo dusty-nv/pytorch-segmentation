@@ -21,6 +21,7 @@ from torch import nn
 import torchvision
 
 from coco_utils import get_coco
+from cityscapes_utils import get_cityscapes
 
 import transforms as T
 import utils
@@ -81,7 +82,8 @@ def get_dataset(name, path, image_set, transform):
     paths = {
         "voc": (path, torchvision.datasets.VOCSegmentation, 21),
         "voc_aug": (path, sbd, 21),
-        "coco": (path, get_coco, 21)
+        "coco": (path, get_coco, 21),
+        "cityscapes": (path, get_cityscapes, 21),
     }
     p, ds_fn, num_classes = paths[name]
 
@@ -99,10 +101,13 @@ def get_transform(train, resolution):
     min_size = int((0.5 if train else 1.0) * base_size)
     max_size = int((2.0 if train else 1.0) * base_size)
     transforms = []
+    #transforms.append(T.Resize((resolution, resolution)))
     transforms.append(T.RandomResize(min_size, max_size))
+
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
         transforms.append(T.RandomCrop(crop_size))
+    
     transforms.append(T.ToTensor())
     transforms.append(T.Normalize(mean=[0.485, 0.456, 0.406],
                                   std=[0.229, 0.224, 0.225]))
