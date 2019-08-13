@@ -27,6 +27,15 @@ class Compose(object):
         return image, target
 
 
+class Resize(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, image, target):
+        image = F.resize(image, self.size)
+        target = F.resize(target, self.size, interpolation=Image.NEAREST)
+        return image, target
+
 class RandomResize(object):
     def __init__(self, min_size, max_size=None):
         self.min_size = min_size
