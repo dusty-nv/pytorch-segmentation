@@ -40,7 +40,7 @@ def get_cityscapes(root, image_set, transforms):
     #    transforms
     #])
 
-    dataset = torchvision.datasets.Cityscapes(root, split=image_set, mode='coarse', target_type='semantic', 
+    dataset = torchvision.datasets.Cityscapes(root, split=image_set, mode='fine', target_type='semantic', 
                                               transform=transforms, target_transform=transforms)
 
     return dataset

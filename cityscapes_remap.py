@@ -115,6 +115,6 @@ if __name__ == "__main__":
 
             img_list.append(os.path.join(img_dir, file_name))
 
-    with ProcessPool(processes=8) as pool:
+    with ProcessPool(processes=args.workers) as pool:
         pool.map(remap_labels, img_list)
 
