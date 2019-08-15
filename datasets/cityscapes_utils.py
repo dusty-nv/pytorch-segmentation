@@ -5,7 +5,6 @@ import torch.utils.data
 import torchvision
 
 from PIL import Image
-from transforms import Compose
 
 
 #

@@ -20,8 +20,8 @@ import torch.utils.data
 from torch import nn
 import torchvision
 
-from coco_utils import get_coco
-from cityscapes_utils import get_cityscapes
+from datasets.coco_utils import get_coco
+from datasets.cityscapes_utils import get_cityscapes
 from datasets.mhp import MHPSegmentation
 
 import transforms as T

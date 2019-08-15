@@ -1,14 +1,12 @@
+import os
 import copy
 import torch
 import torch.utils.data
 import torchvision
+
 from PIL import Image
-
-import os
-
-from pycocotools import mask as coco_mask
-
 from transforms import Compose
+from pycocotools import mask as coco_mask
 
 
 class FilterAndRemapCocoCategories(object):
