@@ -22,6 +22,7 @@ import torchvision
 
 from coco_utils import get_coco
 from cityscapes_utils import get_cityscapes
+from datasets.mhp import MHPSegmentation
 
 import transforms as T
 import utils
@@ -37,7 +38,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
 
     parser.add_argument('data', metavar='DIR', help='path to dataset')
-    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco (default: voc)')
+    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco, cityscapes, mhp (default: voc)')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='fcn_resnet18',
                         choices=model_names,
                         help='model architecture: ' +
@@ -45,8 +46,12 @@ def parse_args():
                         ' (default: fcn_resnet18)')
     parser.add_argument('--aux-loss', action='store_true', help='train with auxilliary loss')
     parser.add_argument('--resolution', default=320, type=int, metavar='N',
-                        help='NxN input image resolution of model (default: 320x320) '
-                         'when training on COCO dataset, consider 480x480')
+                        help='NxN resolution used for scaling the training dataset (default: 320x320) '
+                         'to specify a non-square resolution, use the --width and --height options')
+    parser.add_argument('--width', default=argparse.SUPPRESS, type=int, metavar='X',
+                        help='desired width of the training dataset. if this option is not set, --resolution will be used')
+    parser.add_argument('--height', default=argparse.SUPPRESS, type=int, metavar='Y',
+                        help='desired height of the training dataset. if this option is not set, --resolution will be used')
     parser.add_argument('--device', default='cuda', help='device')
     parser.add_argument('-b', '--batch-size', default=4, type=int)
     parser.add_argument('--epochs', default=30, type=int, metavar='N', help='number of total epochs to run')
@@ -84,6 +89,7 @@ def get_dataset(name, path, image_set, transform):
         "voc_aug": (path, sbd, 21),
         "coco": (path, get_coco, 21),
         "cityscapes": (path, get_cityscapes, 21),
+        "mhp": (path, MHPSegmentation, 21)
     }
     p, ds_fn, num_classes = paths[name]
 
@@ -95,19 +101,29 @@ def get_dataset(name, path, image_set, transform):
 # create data transform
 #
 def get_transform(train, resolution):
-    base_size = resolution + 32 #520
-    crop_size = resolution #480
-
-    min_size = int((0.5 if train else 1.0) * base_size)
-    max_size = int((2.0 if train else 1.0) * base_size)
     transforms = []
-    #transforms.append(T.Resize((resolution, resolution)))
-    transforms.append(T.RandomResize(min_size, max_size))
 
-    if train:
-        transforms.append(T.RandomHorizontalFlip(0.5))
-        transforms.append(T.RandomCrop(crop_size))
-    
+    # if square resolution, perform some aspect cropping
+    # otherwise, resize to the resolution as specified
+    if resolution[0] == resolution[1]:
+        base_size = resolution[0] + 32 #520
+        crop_size = resolution[0]      #480
+
+        min_size = int((0.5 if train else 1.0) * base_size)
+        max_size = int((2.0 if train else 1.0) * base_size)
+
+        transforms.append(T.RandomResize(min_size, max_size))
+
+        # during training mode, perform some data randomization
+        if train:
+            transforms.append(T.RandomHorizontalFlip(0.5))
+            transforms.append(T.RandomCrop(crop_size))
+    else:
+        transforms.append(T.Resize(resolution))
+
+        if train:
+            transforms.append(T.RandomHorizontalFlip(0.5))
+
     transforms.append(T.ToTensor())
     transforms.append(T.Normalize(mean=[0.485, 0.456, 0.406],
                                   std=[0.229, 0.224, 0.225]))
@@ -184,9 +200,15 @@ def main(args):
 
     device = torch.device(args.device)
 
+    # determine the desired resolution
+    resolution = (args.resolution, args.resolution)
+
+    if "width" in args and "height" in args:
+        resolution = (args.height, args.width)     
+    
     # load the train and val datasets
-    dataset, num_classes = get_dataset(args.dataset, args.data, "train", get_transform(train=True, resolution=args.resolution))
-    dataset_test, _ = get_dataset(args.dataset, args.data, "val", get_transform(train=False, resolution=args.resolution))
+    dataset, num_classes = get_dataset(args.dataset, args.data, "train", get_transform(train=True, resolution=resolution))
+    dataset_test, _ = get_dataset(args.dataset, args.data, "val", get_transform(train=False, resolution=resolution))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
@@ -205,9 +227,9 @@ def main(args):
         sampler=test_sampler, num_workers=args.workers,
         collate_fn=utils.collate_fn)
 
-    print("=> training with dataset '{:s}'".format(args.dataset))
-    print("=> training with resolution {:d}x{:d}, {:d} classes".format(args.resolution, args.resolution, num_classes))
-    print("=> training with model:  {:s}".format(args.arch))
+    print("=> training with dataset: '{:s}' (train={:d}, val={:d})".format(args.dataset, len(dataset), len(dataset_test)))
+    print("=> training with resolution: {:d}x{:d}, {:d} classes".format(resolution[1], resolution[0], num_classes))
+    print("=> training with model: {:s}".format(args.arch))
 
     # create the segmentation model
     model = torchvision.models.segmentation.__dict__[args.arch](num_classes=num_classes,
@@ -279,7 +301,7 @@ def main(args):
                 'arch': args.arch,
                 'dataset': args.dataset,                
                 'num_classes': num_classes,
-                'resolution': args.resolution,
+                'resolution': resolution,
                 'accuracy': confmat.acc_global,
                 'mean_IoU': confmat.mean_IoU
             },
