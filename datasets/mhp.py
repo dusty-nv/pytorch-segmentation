@@ -28,8 +28,12 @@ class MHPSegmentation(Dataset):
 		img_list = mhp_image_list(os.path.join(root_dir, 'list/{:s}.txt'.format(image_set)))
 
 		for img_index in img_list:
-			self.images.append(os.path.join(root_dir, image_set, 'images/{:d}.jpg'.format(img_index)))
-			self.targets.append(os.path.join(root_dir, image_set, 'parsing_annos/{:d}.png'.format(img_index)))
+			img_filename = os.path.join(root_dir, image_set, 'images/{:d}.jpg'.format(img_index))
+			target_filename = os.path.join(root_dir, image_set, 'parsing_annos/{:d}.png'.format(img_index))
+
+			if os.path.isfile(img_filename) and os.path.isfile(target_filename):
+				self.images.append(img_filename)
+				self.targets.append(target_filename)
 		
 	def __len__(self):
 		return len(self.images)

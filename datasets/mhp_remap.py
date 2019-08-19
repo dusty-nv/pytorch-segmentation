@@ -118,8 +118,15 @@ def remap_labels(args):
     src_images = 0
     img_output = None
 
+    # check if this image has already been processed (i.e. by a previous run)
+    output_path = os.path.join(output_dir, '{:d}.png'.format(img_index))
+
+    if os.path.isfile(output_path):
+        print('skipping image {:d}, already exists'.format(img_index))
+        return
+
     # determine the number of source images for this frame
-    for n in range(1,20):
+    for n in range(1,30):
         if os.path.isfile(os.path.join(input_dir, '{:d}_{:02d}_01.png'.format(img_index, n))):
             src_images = n
 
@@ -143,7 +150,7 @@ def remap_labels(args):
                 #if org_label != 0: 
                 #    print('img {:d}_{:02d} ({:d}, {:d})  {:d} -> {:d}'.format(img_index, n, x, y, org_label, new_label))
 
-    img_output.save(os.path.join(output_dir, '{:d}.png'.format(img_index)))
+    img_output.save(output_path)
 
 
 if __name__ == "__main__":
