@@ -1,15 +1,16 @@
 #
-# this script remaps the original MHP class label ID's (range 0-58)
-# to lie within a range that the segmentation networks support (21 classes)
+# this script remaps the original MHP dataset (https://lv-mhp.github.io/)
+# class label ID's (range 0-58) to 21 classes that PyTorch FCN-ResNet uses.
 #
 # see below for the mapping of the original class ID's to the new class ID's,
 # along with the class descriptions, some of which are combined from the originals.
 #
-# this script will overwrite the *_labelIds.png files from the gtCoarse/gtFine sets.
-# to run it, launch these example commands for the desired train/train_extra/val sets:
+# this script reads the train/val image list from LV-MHP-V2 and given the path to
+# the parsing_annos directory containing the annotations, remaps them to the output.
 #
-#     $ python3 mhp_remap.py <path-to-cityscapes>/gtCoarse/train
-#     $ python3 mhp_remap.py <path-to-cityscapes>/gtCoarse/val
+#     $ DATA=<path-to-LV-MHP-V2>
+#     $ python3 mhp_remap.py --list=$DATA/list/train.txt $DATA/train/parsing_annos $DATA/train/parsing_annos_21
+#     $ python3 mhp_remap.py --list=$DATA/list/val.txt $DATA/val/parsing_annos $DATA/val/parsing_annos_21
 #   
 import os
 import copy

@@ -22,7 +22,11 @@ import torchvision
 
 from datasets.coco_utils import get_coco
 from datasets.cityscapes_utils import get_cityscapes
+from datasets.deepscene import DeepSceneSegmentation
+
 from datasets.mhp import MHPSegmentation
+from datasets.nyu import NYUDepth
+from datasets.sun import SunRGBDSegmentation
 
 import transforms as T
 import utils
@@ -38,7 +42,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
 
     parser.add_argument('data', metavar='DIR', help='path to dataset')
-    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco, cityscapes, mhp (default: voc)')
+    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco, cityscapes, deepscene, mhp, nyu, sun (default: voc)')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='fcn_resnet18',
                         choices=model_names,
                         help='model architecture: ' +
@@ -89,7 +93,10 @@ def get_dataset(name, path, image_set, transform):
         "voc_aug": (path, sbd, 21),
         "coco": (path, get_coco, 21),
         "cityscapes": (path, get_cityscapes, 21),
-        "mhp": (path, MHPSegmentation, 21)
+        "deepscene": (path, DeepSceneSegmentation, 5),
+        "mhp": (path, MHPSegmentation, 21),
+        "nyu": (path, NYUDepth, 21),
+        "sun": (path, SunRGBDSegmentation, 21),
     }
     p, ds_fn, num_classes = paths[name]
 
