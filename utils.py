@@ -93,9 +93,17 @@ class ConfusionMatrix(object):
 
     def compute(self):
         h = self.mat.float()
+      
+        # not all object classes may have data from the val category
+        h_sum1 = h.sum(1)
+        h_sum1[h_sum1 == 0] = 1
+
+        if not torch.equal(h.sum(1), h_sum1):
+           print('Test:  Warning -- some classes may be missing validation examples')
+
         acc_global = torch.diag(h).sum() / h.sum()
         acc = torch.diag(h) / h.sum(1)
-        iu = torch.diag(h) / (h.sum(1) + h.sum(0) - torch.diag(h))
+        iu = torch.diag(h) / (h_sum1 + h.sum(0) - torch.diag(h))
         self.acc_global = acc_global.item() * 100
         self.mean_IoU = iu.mean().item() * 100
         return acc_global, acc, iu
@@ -191,7 +199,7 @@ class MetricLogger(object):
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print('{} Total time: {}'.format(header, total_time_str))
+        print('{}  Total time: {}'.format(header, total_time_str))
 
 
 def cat_list(images, fill_value=0):
