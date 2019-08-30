@@ -33,6 +33,8 @@ checkpoint = torch.load(opt.input)
 arch = checkpoint['arch']
 num_classes = checkpoint['num_classes']
 
+print('checkpoint accuracy: {:.3f}% mean IoU, {:.3f}% accuracy'.format(checkpoint['mean_IoU'], checkpoint['accuracy']))
+
 # create the model architecture
 print('using model:  ' + arch)
 print('num classes:  ' + str(num_classes))
