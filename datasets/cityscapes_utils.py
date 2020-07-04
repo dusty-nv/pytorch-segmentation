@@ -15,7 +15,7 @@ class FilterAndRemapCityscapesCategories(object):
     def __init__(self, categories, classes):
         self.categories = categories
         self.classes = classes
-        print self.classes
+        print (self.classes)
 
     def __call__(self, image, anno):
 

@@ -23,7 +23,7 @@ import torchvision
 from datasets.coco_utils import get_coco
 from datasets.cityscapes_utils import get_cityscapes
 from datasets.deepscene import DeepSceneSegmentation
-
+from datasets.custom_dataset import CustomSegmentation
 from datasets.mhp import MHPSegmentation
 from datasets.nyu import NYUDepth
 from datasets.sun import SunRGBDSegmentation
@@ -42,12 +42,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
 
     parser.add_argument('data', metavar='DIR', help='path to dataset')
-    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco, cityscapes, deepscene, mhp, nyu, sun (default: voc)')
+    parser.add_argument('--dataset', default='voc', help='dataset type: voc, voc_aug, coco, cityscapes, deepscene, mhp, nyu, sun, custom (default: voc)')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='fcn_resnet18',
                         choices=model_names,
                         help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: fcn_resnet18)')
+    parser.add_argument('--classes', default=21, type=int, metavar='C', help='number of classes in your dataset (outputs)')
     parser.add_argument('--aux-loss', action='store_true', help='train with auxilliary loss')
     parser.add_argument('--resolution', default=320, type=int, metavar='N',
                         help='NxN resolution used for scaling the training dataset (default: 320x320) '
@@ -85,18 +86,19 @@ def parse_args():
 #
 # load desired dataset
 #
-def get_dataset(name, path, image_set, transform):
+def get_dataset(name, path, image_set, transform, num_classes):
     def sbd(*args, **kwargs):
         return torchvision.datasets.SBDataset(*args, mode='segmentation', **kwargs)
     paths = {
-        "voc": (path, torchvision.datasets.VOCSegmentation, 21),
-        "voc_aug": (path, sbd, 21),
-        "coco": (path, get_coco, 21),
-        "cityscapes": (path, get_cityscapes, 21),
+        "voc": (path, torchvision.datasets.VOCSegmentation, num_classes),
+        "voc_aug": (path, sbd, num_classes),
+        "coco": (path, get_coco, num_classes),
+        "cityscapes": (path, get_cityscapes, num_classes),
         "deepscene": (path, DeepSceneSegmentation, 5),
-        "mhp": (path, MHPSegmentation, 21),
-        "nyu": (path, NYUDepth, 21),
-        "sun": (path, SunRGBDSegmentation, 21),
+        "mhp": (path, MHPSegmentation, num_classes),
+        "nyu": (path, NYUDepth, num_classes),
+        "sun": (path, SunRGBDSegmentation, num_classes),
+        "custom": (path, CustomSegmentation, num_classes)
     }
     p, ds_fn, num_classes = paths[name]
 
@@ -214,8 +216,8 @@ def main(args):
         resolution = (args.height, args.width)     
     
     # load the train and val datasets
-    dataset, num_classes = get_dataset(args.dataset, args.data, "train", get_transform(train=True, resolution=resolution))
-    dataset_test, _ = get_dataset(args.dataset, args.data, "val", get_transform(train=False, resolution=resolution))
+    dataset, num_classes = get_dataset(args.dataset, args.data, "train", get_transform(train=True, resolution=resolution), args.classes)
+    dataset_test, _ = get_dataset(args.dataset, args.data, "val", get_transform(train=False, resolution=resolution), args.classes)
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
