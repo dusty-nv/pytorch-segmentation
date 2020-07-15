@@ -11,18 +11,7 @@ class CustomSegmentation(Dataset):
 	"""COMMENTS"""
 
 	def __init__(self, root_dir, image_set='train', transforms=None):
-		"""
-		Parameters:
-			root_dir (string): Root directory of the dumped NYU-Depth dataset.
-			image_set (string, optional): Select the image_set to use, ``train``, ``val``
-			train_extra (bool, optional): If True, use extra images during training
-			transforms (callable, optional): Optional transform to be applied
-				on a sample.
-		"""
-		self.root_dir = root_dir
-		self.image_set = image_set
-		self.transforms = transforms
-
+	
 		self.images = []
 		self.targets = []
 
