@@ -20,6 +20,7 @@ python_abi=3.6=1_cp36m
 setuptools=49.1.0=py36h9f0ad1d_0
 vc=14.1=h869be7e_1
 vs2015_runtime=14.16.27012=h30e32a0_2
+tqdm=4.48.2=pyh9f0ad1d_0
 wheel=0.34.2=py_1
 wincertstore=0.2=py36_1003
 zlib=1.2.11=h2fa13f4_1006
