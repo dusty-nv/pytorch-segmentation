@@ -3,6 +3,7 @@ import random
 import re
 from PIL import Image, ImageFile
 from tqdm import tqdm
+import numpy as np
 import argparse
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -26,7 +27,8 @@ ap.add_argument("--mask-format", dest="mask_format", type=str, default="png",
 ap.add_argument("--keep-original", dest="keep_original", action="store_true",
 	help="keep the original images after storing them into corresponding folders")
 
-
+ap.add_argument("--remove-colormap", dest="remove_colormap", action="store_true",
+	help="remove colormap (if VOC dataset format is used")
 
 
 args = vars(ap.parse_args())
@@ -46,7 +48,8 @@ MASK_FORMAT = '.'+ args["mask_format"]
 
 #Remove duplicates after adding them to train/val folders
 keep_old_images = args["keep_original"]
-
+#Remove colormap (it is defined during inference)
+remove_colormap = args["remove_colormap"]
   
 # Get all images and masks, sort them and shuffle them to generate data sets.
 
@@ -101,7 +104,6 @@ for folder in folders:
 #Add train and val images and their masks to corresponding folders
 
 
-
 def add_images(dir_name, image):
 
   full_image_path = INPUT_IMAGE_PATH+'/'+image+IMAGE_FORMAT
@@ -116,7 +118,8 @@ def add_masks(dir_name, image):
 
   full_mask_path = INPUT_MASK_PATH+'/'+image+MASK_FORMAT
   img = Image.open(full_mask_path)
-  
+  if remove_colormap: 
+    img = Image.new('L', (img.width, img.height))
   img.save(OUTPUT_MASK_PATH+'/{}'.format(dir_name)+'/'+image+MASK_FORMAT)
   
   if not keep_old_images:
