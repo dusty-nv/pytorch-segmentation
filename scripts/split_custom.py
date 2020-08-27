@@ -28,7 +28,7 @@ ap.add_argument("--keep-original", dest="keep_original", action="store_true",
 	help="keep the original images after storing them into corresponding folders")
 
 ap.add_argument("--remove-colormap", dest="remove_colormap", action="store_true",
-	help="remove colormap (if VOC dataset format is used")
+	help="remove colormap (when VOC dataset format is used)")
 
 
 args = vars(ap.parse_args())

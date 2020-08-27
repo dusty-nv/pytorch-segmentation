@@ -14,6 +14,7 @@ class CustomSegmentation(Dataset):
 	
 		self.images = []
 		self.targets = []
+		self.transforms = transforms
 
 		if image_set == 'train':
 			train_images, train_targets = self.gather_images(os.path.join(root_dir, 'images/training'),
