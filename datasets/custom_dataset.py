@@ -8,7 +8,19 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class CustomSegmentation(Dataset):
-	"""COMMENTS"""
+	"""
+
+	images/
+		training/
+		validation/
+
+	annotations/
+		training/
+		validation/
+
+	"""
+
+	
 
 	def __init__(self, root_dir, image_set='train', transforms=None):
 	

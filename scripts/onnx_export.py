@@ -10,7 +10,7 @@ import torchvision.models as models
 
 # parse command line
 parser = argparse.ArgumentParser()
-parser.add_argument('--input', type=str, default='../model_best.pth', help="path to input PyTorch model (default: ../model_best.pth)")
+parser.add_argument('--input', type=str, default='model_best.pth', help="path to input PyTorch model (default: model_best.pth)")
 parser.add_argument('--output', type=str, default='', help="desired path of converted ONNX model (default: <ARCH>.onnx)")
 parser.add_argument('--model-dir', type=str, default='', help="directory to look for the input PyTorch model in, and export the converted ONNX model to (if --output doesn't specify a directory)")
 
