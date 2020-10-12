@@ -3,10 +3,6 @@
 #
 #           https://github.com/pytorch/vision/tree/v0.3.0/references/segmentation
 #
-# It's also meant to be used against this fork of torchvision, which includes 
-# some patches for exporting to ONNX and adds fcn_resnet18 and fcn_resnet34:
-#
-#           https://github.com/dusty-nv/vision/tree/v0.3.0
 #
 import argparse
 import datetime

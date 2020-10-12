@@ -9,6 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 
 class CustomSegmentation(Dataset):
 	"""
+	Based on ADE20K dataset format
 
 	images/
 		training/
