@@ -19,6 +19,7 @@ import torch
 import torch.utils.data
 from torch import nn
 import torchvision
+from models import segmentation
 
 from datasets.coco_utils import get_coco
 from datasets.cityscapes_utils import get_cityscapes
@@ -31,9 +32,9 @@ from datasets.sun import SunRGBDSegmentation
 import transforms as T
 import utils
 
-model_names = sorted(name for name in torchvision.models.segmentation.__dict__
+model_names = sorted(name for name in segmentation.__dict__
     if name.islower() and not name.startswith("__")
-    and callable(torchvision.models.segmentation.__dict__[name]))
+    and callable(segmentation.__dict__[name]))
 
 #
 # parse command-line arguments
@@ -241,7 +242,7 @@ def main(args):
     print("=> training with model: {:s}".format(args.arch))
 
     # create the segmentation model
-    model = torchvision.models.segmentation.__dict__[args.arch](num_classes=num_classes,
+    model = segmentation.__dict__[args.arch](num_classes=num_classes,
                                                                 aux_loss=args.aux_loss,
                                                                 pretrained=args.pretrained)
     model.to(device)
