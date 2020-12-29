@@ -3,7 +3,7 @@ import math
 import torch
 
 from PIL import Image
-from mhp_utils import mhp_image_list
+from .mhp_utils import mhp_image_list
 from torch.utils.data import Dataset, DataLoader
 
 

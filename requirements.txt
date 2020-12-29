@@ -1,0 +1,26 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+certifi=2020.6.20=py36h9f0ad1d_0
+cffi=1.14.0=py36ha419a9e_0
+cudatoolkit=10.0.130=0
+cython=0.29.20=py36h003fed8_0
+intel-openmp=2020.1=216
+libblas=3.8.0=16_mkl
+libcblas=3.8.0=16_mkl
+liblapack=3.8.0=16_mkl
+libprotobuf=3.11.3=h1a1b453_0
+mkl=2020.1=216
+ninja=1.10.0=h1ad3211_0
+numpy=1.18.5=py36h4d86e3b_0
+pip=20.1.1=py_1
+protobuf=3.5.1=py36_vc14_3
+pycparser=2.20=pyh9f0ad1d_2
+python=3.6.10=he025d50_1009_cpython
+python_abi=3.6=1_cp36m
+setuptools=49.1.0=py36h9f0ad1d_0
+vc=14.1=h869be7e_1
+vs2015_runtime=14.16.27012=h30e32a0_2
+tqdm=4.48.2=pyh9f0ad1d_0
+wheel=0.34.2=py_1
+wincertstore=0.2=py36_1003
+zlib=1.2.11=h2fa13f4_1006
